@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Barcode labels{% endblock %}
+{% block content %}
+<h1>Barcode labels</h1>
+<p class="muted no-print">Print this page and stick one label on each physical copy. Needs internet once to load the barcode library.
+  <button onclick="window.print()">Print</button></p>
+<div class="labels">
+  {% for r in rows %}
+  <div class="label"><svg class="bc" data-code="{{ r.copy_id }}"></svg><small>{{ r.title[:34] }}</small></div>
+  {% endfor %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script>
+  document.querySelectorAll('svg.bc').forEach(el =>
+    JsBarcode(el, el.dataset.code, {format: 'CODE128', height: 40, fontSize: 14, margin: 4}));
+</script>
+{% endblock %}

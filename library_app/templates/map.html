@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Floor map{% endblock %}
+{% block content %}
+<section class="map-heading">
+  <div><p class="eyebrow">GROUND FLOOR</p><h1>Library floor map</h1></div>
+  <p class="muted">Select a rack to browse its collection.</p>
+</section>
+<div class="floor-legend" aria-label="Availability legend">
+  <span><i class="legend-dot fresh"></i>Well stocked</span>
+  <span><i class="legend-dot steady"></i>Limited</span>
+  <span><i class="legend-dot busy"></i>Mostly issued</span>
+</div>
+<section class="floor-plan" aria-label="Top-down library plan">
+  <div class="map-aisle row-one">
+    {% for c in categories[:5] %}
+    {% set pct = (c.available / c.copies * 100) if c.copies else 0 %}
+    <a class="map-rack {{ 'stock-high' if pct < 20 else 'stock-mid' if pct < 55 else 'stock-light' }}" href="{{ url_for('index', category=c.name) }}">
+      <span class="map-rack-letter">{{ c.rack }}</span><strong>{{ c.name }}</strong><small>{{ c.available }} / {{ c.copies }} available</small>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="map-corridor"><span>MAIN AISLE</span></div>
+  <div class="map-aisle row-two">
+    {% for c in categories[5:] %}
+    {% set pct = (c.available / c.copies * 100) if c.copies else 0 %}
+    <a class="map-rack {{ 'stock-high' if pct < 20 else 'stock-mid' if pct < 55 else 'stock-light' }}" href="{{ url_for('index', category=c.name) }}">
+      <span class="map-rack-letter">{{ c.rack }}</span><strong>{{ c.name }}</strong><small>{{ c.available }} / {{ c.copies }} available</small>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="map-service">
+    <div class="map-desk"><span class="room-symbol">↗</span><strong>Reception / Issue desk</strong><small>Checkouts · Returns · Help</small></div>
+    <div class="map-reading"><span class="room-symbol">▤</span><strong>Reading area</strong><small>Quiet study · 24 seats</small><div class="reading-tables"><i></i><i></i><i></i><i></i></div></div>
+    <div class="map-entry"><span>ENTRANCE</span><b>↓</b></div>
+  </div>
+</section>
+{% endblock %}

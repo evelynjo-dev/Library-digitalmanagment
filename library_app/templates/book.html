@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ b.title }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('index') }}">Catalog</a> › <a href="{{ url_for('index', category=b.category) }}">{{ b.category }}</a></p>
+<section class="detail">
+  <img class="cover big" alt="Cover of {{ b.title }}" src="{{ b.cover_url or url_for('cover', book_id=b.book_id) }}">
+  <div>
+    <h1>{{ b.title }}</h1>
+    <p class="author lg">{{ b.author }}</p>
+    <p class="loc lg">Rack {{ b.rack }} · Row {{ b.shelf_row }} · {{ b.category }}</p>
+    <div class="meter"><div class="fill {{ b.available|avail_class }}"
+         style="width: {{ (b.available / b.total * 100) if b.total else 0 }}%"></div></div>
+    <p class="count"><strong>{{ b.available }}</strong> of {{ b.total }} copies available</p>
+
+    {% set free = copies | selectattr('status', 'equalto', 'AVAILABLE') | list %}
+    <form class="panel" method="post" action="{{ url_for('issue') }}">
+      <h3>Quick issue</h3>
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <div class="fields">
+        <select name="member_id" required>
+          <option value="">Select member…</option>
+          {% for m in members %}<option value="{{ m.member_id }}">{{ m.member_id }} · {{ m.name }} ({{ m.holding }} held)</option>{% endfor %}
+        </select>
+        <select name="copy_id" required {{ 'disabled' if not free }}>
+          {% for c in free %}<option value="{{ c.copy_id }}">{{ c.copy_id }}</option>{% else %}<option>No copies free</option>{% endfor %}
+        </select>
+        <button {{ 'disabled' if not free }}>Issue</button>
+      </div>
+    </form>
+    <p><a class="link" href="{{ url_for('labels', book_id=b.book_id) }}">Print barcode labels for this book</a></p>
+  </div>
+</section>
+
+<h2 class="sec">Copies</h2>
+<table>
+  <tr><th>Copy ID</th><th>Status</th><th>Borrowed by</th><th>Due date</th><th></th></tr>
+  {% for c in copies %}
+  <tr>
+    <td><code>{{ c.copy_id }}</code></td>
+    <td><span class="badge {{ 'ok' if c.status == 'AVAILABLE' else 'out' }}">{{ c.status.title() }}</span></td>
+    <td>{{ c.holder or '—' }}</td>
+    <td>{{ c.due_date or '—' }}</td>
+    <td>{% if c.status == 'ISSUED' %}
+      <form method="post" action="{{ url_for('return_book') }}">
+        <input type="hidden" name="copy_id" value="{{ c.copy_id }}">
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button class="small">Return</button></form>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

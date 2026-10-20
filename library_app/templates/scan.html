@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Scan desk{% endblock %}
+{% block content %}
+<h1>Scan desk</h1>
+<p class="muted">Scan a member ID, then a copy ID to issue. Scan a copy ID to return it.</p>
+<div class="two scan-panels">
+  <form class="panel scan-panel" method="post" action="{{ url_for('issue') }}">
+    <h3>Issue a book</h3>
+    <label>Member ID<input class="scan-focus" name="member_id" placeholder="Scan member barcode" autofocus required></label>
+    <label>Book copy ID<input name="copy_id" placeholder="Scan copy barcode" required></label>
+    <button>Issue book</button>
+  </form>
+  <form class="panel scan-panel" method="post" action="{{ url_for('return_book') }}">
+    <h3>Return a book</h3>
+    <label>Book copy ID<input class="scan-focus" name="copy_id" placeholder="Scan copy barcode" required></label>
+    <button class="alt">Return book</button>
+  </form>
+</div>
+
+<h2 class="sec">Recent activity</h2>
+<table class="js-table">
+  <thead><tr><th>Book</th><th>Copy</th><th>Member</th><th>Issued</th><th>Due</th><th>Status</th></tr></thead><tbody>
+  {% for t in recent %}
+  <tr><td>{{ t.title }}</td><td><code>{{ t.copy_id }}</code></td><td>{{ t.member_name }}</td>
+      <td>{{ t.issue_date }}</td><td>{{ t.due_date }}</td>
+      <td>{% if t.return_date %}<span class="badge ok">Returned</span>{% else %}<span class="badge low">Issued</span>{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

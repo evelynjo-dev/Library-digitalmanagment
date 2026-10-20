@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block content %}
+<section class="hero">
+  <h1>Find a book</h1>
+  <form class="search" method="get">
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <input name="q" value="{{ q or '' }}" placeholder="Search by title or author…" autofocus>
+    <button>Search</button>
+  </form>
+  <div class="chips">
+    <a class="chip {{ '' if category else 'active' }}" href="{{ url_for('index') }}">All racks</a>
+    {% for c in categories %}
+      <a class="chip {{ 'active' if category == c.name }}" href="{{ url_for('index', category=c.name) }}">
+        {{ c.rack }} · {{ c.name }} <small>{{ c.titles }}</small></a>
+    {% endfor %}
+  </div>
+  {% if filtered %}<p class="muted">{{ total }} book{{ '' if total == 1 else 's' }} found.
+    <a href="{{ url_for('index') }}">Clear filters</a></p>{% endif %}
+  <div class="view-switch" role="group" aria-label="Catalog view">
+    <span>View</span>
+    <button type="button" class="view-option" data-view-choice="shelf">Shelf view</button>
+    <button type="button" class="view-option" data-view-choice="grid">Cover grid view</button>
+  </div>
+</section>
+
+{% for s in sections %}
+<section class="rack">
+  <div class="bookcase">
+    <h2 class="nameplate"><span>Rack {{ s.rack }}</span><strong>· {{ s.name }}</strong><small>{{ s.books|length }} titles</small></h2>
+    <div class="physical-shelves">
+      {% for row in [1, 2, 3] %}
+      <div class="physical-shelf" aria-label="Shelf row {{ row }}">
+        <div class="spines">
+          {% for b in s.books if b.shelf_row == row %}
+          <a class="spine {{ b.available|avail_class }}" href="{{ url_for('book', book_id=b.book_id) }}"
+             style="--spine-height: {{ 112 + (b.book_id % 5) * 9 }}px; --spine-width: {{ 37 + (b.book_id % 4) * 5 }}px; --spine-cover: url('{{ url_for('cover', book_id=b.book_id) }}')"
+             title="{{ b.title }} by {{ b.author }} · {{ b.available }} of {{ b.total }} available">
+            <span class="spine-dot" aria-label="{{ 'Available' if b.available > 1 else 'Low availability' if b.available == 1 else 'Unavailable' }}"></span>
+            <span class="spine-title">{{ b.title }}</span>
+            <span class="spine-tip"><img src="{{ url_for('cover', book_id=b.book_id) }}" alt=""><span><strong>{{ b.title }}</strong><small>{{ b.author }}</small><small>{{ b.available }} of {{ b.total }} available</small></span></span>
+          </a>
+          {% endfor %}
+        </div>
+        <div class="wood-plank"><span>{{ row }}</span></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="cover-grid {{ 'is-filtered' if filtered }}" hidden>
+    {% for b in s.books %}{{ card(b) }}{% endfor %}
+  </div>
+</section>
+{% else %}
+<p class="empty">No books match your search.</p>
+{% endfor %}
+{% endblock %}

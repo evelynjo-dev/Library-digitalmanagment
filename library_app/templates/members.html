@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Members{% endblock %}
+{% block content %}
+<h1>Members</h1>
+<form class="panel" method="post">
+  <h3>Add member</h3>
+  <div class="fields">
+    <input name="member_id" placeholder="Member ID (roll no.)" required>
+    <input name="name" placeholder="Full name" required>
+    <input name="phone" placeholder="Phone (optional)">
+    <button>Add</button>
+  </div>
+</form>
+<table class="js-table">
+  <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Books held</th></tr></thead><tbody>
+  {% for m in members %}
+  <tr><td><code>{{ m.member_id }}</code></td><td>{{ m.name }}</td><td>{{ m.phone or '—' }}</td>
+      <td>{{ m.holding }} / {{ max_books }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
