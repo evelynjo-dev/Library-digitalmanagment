@@ -4,16 +4,17 @@
 <section class="auth-panel panel">
   <p class="eyebrow">Secure access</p>
   <h1>Sign in to Smart Library</h1>
-  <p class="muted">Students and library administrators use their assigned member ID and password.</p>
+  <p class="muted">Sign in with your email address or library ID.</p>
   <form method="post" action="{{ url_for('login') }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    <label>Member or administrator ID
-      <input name="member_id" autocomplete="username" required autofocus>
+    <label>Email or member ID
+      <input name="identifier" autocomplete="username" required autofocus>
     </label>
     <label>Password
       <input type="password" name="password" autocomplete="current-password" required>
     </label>
     <button type="submit">Sign in</button>
   </form>
+  <p class="muted">New to the library? <a href="{{ url_for('register') }}">Create a student account</a>.</p>
 </section>
 {% endblock %}

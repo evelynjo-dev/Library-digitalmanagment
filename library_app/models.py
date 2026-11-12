@@ -38,6 +38,7 @@ class User(db.Model):
     member_id = db.Column(db.String(64), nullable=False, unique=True, index=True)
     qr_code = db.Column(db.String(200), nullable=False, unique=True, index=True)
     name = db.Column(db.String(160), nullable=False)
+    email = db.Column(db.String(254))
     phone = db.Column(db.String(40))
     password_hash = db.Column(db.String(255))
     role = db.Column(db.String(24), nullable=False, default="STUDENT")
@@ -54,6 +55,15 @@ class User(db.Model):
     @validates("name")
     def validate_name(self, _key, value):
         return _required_text(value, "Name", 160)
+
+    @validates("email")
+    def validate_email(self, _key, value):
+        if value is None:
+            return None
+        email = _required_text(value, "Email", 254).lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            raise ValueError("Email must be a valid email address.")
+        return email
 
     @validates("role")
     def validate_role(self, _key, value):

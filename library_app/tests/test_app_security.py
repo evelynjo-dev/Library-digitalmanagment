@@ -54,6 +54,50 @@ assert anonymous.get("/api/members").status_code == 401
 assert anonymous.get("/api/books").status_code == 200
 assert anonymous.post("/api/books", json={}).status_code == 401
 
+register_page = anonymous.get("/register")
+assert register_page.status_code == 200 and b"Email address" in register_page.data
+assert anonymous.post("/register", data={
+    "name": "Web Student", "email": "web.student@example.edu",
+    "password": "secure-web-student-password",
+}).status_code == 400
+registered = anonymous.post("/register", data={
+    "_csrf_token": csrf(register_page),
+    "name": "Web Student",
+    "email": "Web.Student@Example.edu",
+    "password": "secure-web-student-password",
+    "role": "ADMIN",
+})
+assert registered.status_code == 302 and registered.location.endswith("/student")
+portal = anonymous.get("/student")
+assert portal.status_code == 200 and b"Web Student" in portal.data
+with application.app_context():
+    web_student = library_db.db.session.query(User).filter_by(
+        email="web.student@example.edu").one()
+    assert web_student.role == "STUDENT"
+    assert web_student.password_hash != "secure-web-student-password"
+    web_student_id = web_student.member_id
+
+duplicate_client = application.test_client()
+duplicate_page = duplicate_client.get("/register")
+duplicate = duplicate_client.post("/register", data={
+    "_csrf_token": csrf(duplicate_page),
+    "name": "Duplicate Student",
+    "email": "WEB.STUDENT@example.edu",
+    "password": "secure-web-student-password",
+})
+assert duplicate.status_code == 409
+
+logout = anonymous.post("/logout", data={"_csrf_token": csrf(portal)})
+assert logout.status_code == 302
+email_login_page = anonymous.get("/login")
+email_login = anonymous.post("/login", data={
+    "_csrf_token": csrf(email_login_page),
+    "identifier": "WEB.STUDENT@EXAMPLE.EDU",
+    "password": "secure-web-student-password",
+})
+assert email_login.status_code == 302
+assert anonymous.get("/student").status_code == 200
+
 student_client = application.test_client()
 login_page = student_client.get("/login")
 login = student_client.post("/login", data={

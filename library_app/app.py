@@ -70,7 +70,7 @@ def load_request_user():
 def protect_csrf():
     if request.method in {"GET", "HEAD", "OPTIONS"}:
         return None
-    if not session.get("user_id") and request.endpoint != "login":
+    if not session.get("user_id") and request.endpoint not in {"login", "register"}:
         return None
     expected = session.get("_csrf_token")
     supplied = request.headers.get("X-CSRF-Token") or request.form.get("_csrf_token")
@@ -152,12 +152,16 @@ def _safe_local_target(target):
 def login():
     if request.method == "GET":
         return render_template("login.html")
-    member_id = (request.form.get("member_id") or "").strip().upper()
+    identifier = (request.form.get("identifier") or request.form.get("member_id") or "").strip()
     password = request.form.get("password") or ""
-    user = db.db.session.query(db.User).filter_by(member_id=member_id).first()
+    users = db.db.session.query(db.User)
+    if "@" in identifier:
+        user = users.filter_by(email=identifier.lower()).first()
+    else:
+        user = users.filter_by(member_id=identifier.upper()).first()
     if user is None or not user.password_hash or not check_password_hash(
             user.password_hash, password):
-        flash("The ID or password is incorrect, or the account has not been activated.", "error")
+        flash("The email or ID and password do not match an active account.", "error")
         return render_template("login.html"), 401
     session.clear()
     session["user_id"] = user.id
@@ -165,6 +169,33 @@ def login():
     flash(f"Welcome, {user.name}.", "success")
     if user.role == "ADMIN":
         return redirect(url_for("dashboard"))
+    return redirect(url_for("student_portal"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if g.current_user:
+        destination = "dashboard" if g.current_user.role == "ADMIN" else "student_portal"
+        return redirect(url_for(destination))
+    if request.method == "GET":
+        return render_template("register.html")
+    try:
+        user = db.create_student_account(
+            request.form.get("name"),
+            request.form.get("email"),
+            request.form.get("password"),
+        )
+    except db.ConflictError as error:
+        flash(str(error), "error")
+        return render_template("register.html"), 409
+    except db.ValidationError as error:
+        flash(str(error), "error")
+        return render_template("register.html"), 400
+
+    session.clear()
+    session["user_id"] = user.id
+    session.permanent = True
+    flash(f"Welcome, {user.name}.", "success")
     return redirect(url_for("student_portal"))
 
 

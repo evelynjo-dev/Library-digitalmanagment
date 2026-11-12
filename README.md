@@ -32,6 +32,11 @@ The SQLite database is created in `library_app/library.db`. Existing records
 are migrated in place; a new database starts empty and does not insert fake
 dashboard data.
 
+Students can register at `/register` with an email address and password, then
+sign in using that email. Public registrations are student-only; email
+ownership is not verified because no email-delivery service is configured.
+Administrators continue to use their configured library ID.
+
 Run automated tests from `library_app` with:
 
 ```powershell

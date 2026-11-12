@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sqlite3
+import uuid
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import and_, case, func, inspect, or_
@@ -255,6 +256,11 @@ def init_db():
         _upgrade_auth_notifications()
         db.session.add(SchemaMigration(version=3))
         db.session.commit()
+    if db.session.get(SchemaMigration, 4) is None:
+        db.session.rollback()
+        _upgrade_user_emails()
+        db.session.add(SchemaMigration(version=4))
+        db.session.commit()
 
 
 def _upgrade_qr_codes():
@@ -310,6 +316,20 @@ def _upgrade_auth_notifications():
     except SQLAlchemyError as exc:
         raise DatabaseError(
             "The authentication and notification migration failed; existing records were preserved.") from exc
+
+
+def _upgrade_user_emails():
+    try:
+        columns = {column["name"] for column in inspect(db.engine).get_columns("users")}
+        with db.engine.begin() as connection:
+            if "email" not in columns:
+                connection.exec_driver_sql("ALTER TABLE users ADD COLUMN email VARCHAR(254)")
+            connection.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_nocase "
+                "ON users (email COLLATE NOCASE) WHERE email IS NOT NULL")
+    except SQLAlchemyError as exc:
+        raise DatabaseError(
+            "The account-email migration failed; existing records were preserved.") from exc
 
 
 def _commit():
@@ -1151,6 +1171,32 @@ def bootstrap_admin(member_id, name, password):
     user.password_hash = generate_password_hash(password)
     _audit("BOOTSTRAP_ADMIN", "User", member_id)
     _commit()
+
+
+def create_student_account(name, email, password):
+    name = _required({"name": name}, "name", "Name", 160)
+    email = _required({"email": email}, "email", "Email", 254).lower()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise ValidationError("Enter a valid email address.")
+    if not isinstance(password, str) or len(password) < 12 or len(password) > 128:
+        raise ValidationError("Password must be between 12 and 128 characters.")
+    if db.session.query(User).filter(func.lower(User.email) == email).first():
+        raise ConflictError("An account already uses this email address.")
+
+    member_id = f"WEB-{uuid.uuid4().hex.upper()}"
+    user = User(
+        member_id=member_id,
+        qr_code=student_qr_payload(member_id),
+        name=name,
+        email=email,
+        password_hash=generate_password_hash(password),
+        role="STUDENT",
+    )
+    db.session.add(user)
+    _flush()
+    _audit("SELF_REGISTER", "User", user.id, {"member_id": member_id})
+    _commit()
+    return user
 
 
 def generate_due_notifications(member_id=None):

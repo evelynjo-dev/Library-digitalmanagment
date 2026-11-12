@@ -16,14 +16,20 @@ members and transactions are imported, and the original tables are retained as
 The database uses Flask-SQLAlchemy and includes users, books, book copies,
 categories, racks, shelves, transactions, reservations, fines, notifications
 and activity logs. Versioned migrations add student QR cards, password hashes,
-and notification links without replacing existing records. Book availability
-is derived from active transactions. Each copy and student has a distinct QR
-payload. Labels include both QR and Code 128 barcodes.
+notification links, and email sign-in fields without replacing existing
+records. Book availability is derived from active transactions. Each copy and
+student has a distinct QR payload. Labels include both QR and Code 128 barcodes.
 
-## Secure account setup
-There is no public signup or default password. Configure the initial
-administrator before starting the app. In PowerShell, set the following values
-in the same terminal used to start `python app.py`:
+## Accounts and sign-in
+Students can create an account from `/register` with a name, email address, and
+password of at least 12 characters. New public accounts are student-only and
+can sign in with their email address. Email ownership is not verified because
+the app has no configured email-delivery service. Existing students and
+administrators can continue signing in with their library ID.
+
+There is no public administrator signup or default administrator password.
+Configure the initial administrator before starting the app. In PowerShell,
+set the following values in the same terminal used to start `python app.py`:
 
     $env:LIBRARY_SECRET_KEY = (python -c "import secrets; print(secrets.token_urlsafe(48))")
     $env:LIBRARY_ADMIN_ID = "LIB-ADMIN"
@@ -40,6 +46,7 @@ marked Secure. Do not commit credentials or secret keys.
 
 ## Pages
 - Catalog (/)         : racks A-J, cover page, author, "x of y available", rack/row, search + category filter
+- Registration (/register): student self-signup with email and password
 - Book page           : copy-by-copy status; students can reserve titles
 - Scan desk (/scan)   : administrator-only camera/manual QR issue and return
 - Student portal (/student): profile, QR card, active loans, due dates, fines, reservation and borrowing history, notifications
