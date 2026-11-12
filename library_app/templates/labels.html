@@ -6,7 +6,13 @@
   <button onclick="window.print()">Print</button></p>
 <div class="labels">
   {% for r in rows %}
-  <div class="label"><svg class="bc" data-code="{{ r.copy_id }}"></svg><small>{{ r.title[:34] }}</small></div>
+  <div class="label">
+    <div class="label-codes">
+      <svg class="bc" data-code="{{ r.copy_id }}"></svg>
+      <img class="qr" src="{{ url_for('copy_qr', copy_id=r.copy_id) }}" alt="QR code for {{ r.copy_id }}">
+    </div>
+    <small>{{ r.title[:34] }} · {{ r.copy_id }}</small>
+  </div>
   {% endfor %}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>

@@ -1,69 +1,155 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Analytics dashboard{% endblock %}
 {% block content %}
-<h1>Librarian dashboard</h1>
+<div class="dashboard-heading">
+  <div>
+    <p class="eyebrow">Live from SQLite</p>
+    <h1>Librarian dashboard</h1>
+    <p class="muted">Circulation and inventory activity for the current collection.</p>
+  </div>
+  <a class="report-button" href="{{ url_for('reports') }}">Reports &amp; exports</a>
+</div>
+
 <div class="stats">
   <div class="stat"><b>{{ stats.titles }}</b><span>Titles</span></div>
   <div class="stat"><b>{{ stats.copies }}</b><span>Total copies</span></div>
   <div class="stat good"><b>{{ stats.available }}</b><span>Available</span></div>
   <div class="stat warn"><b>{{ stats.issued }}</b><span>Issued</span></div>
-  <div class="stat bad"><b>{{ stats.overdue }}</b><span>Overdue</span></div>
-  <div class="stat"><b>{{ stats.members }}</b><span>Members</span></div>
+  <div class="stat bad"><b>{{ stats.overdue }}</b><span>Overdue now</span></div>
+  <div class="stat"><b>{{ stats.members }}</b><span>Students</span></div>
 </div>
 
-<section class="chart-grid" aria-label="Collection charts">
-  <div class="chart-panel"><h2>Copy status</h2><div class="chart-wrap"><canvas id="copy-chart" aria-label="Available and issued copies"></canvas></div></div>
-  <div class="chart-panel"><h2>Issued copies by rack</h2><div class="chart-wrap"><canvas id="rack-chart" aria-label="Issued copies per rack"></canvas></div></div>
+<section class="analytics-summary" aria-label="Overdue summary">
+  <span><strong>{{ analytics.overdue.count }}</strong> active overdue loan(s)</span>
+  <span>Estimated current fines: <strong>Rs.{{ analytics.overdue.estimated_fines }}</strong></span>
 </section>
 
-<h2 class="sec">Most borrowed books</h2>
-<ol class="popular-list">
-  {% for b in most_borrowed %}
-  <li><span class="popular-rank">{{ loop.index }}</span><span class="popular-book"><strong>{{ b.title }}</strong><small>{{ b.author }} · Rack {{ b.rack }}</small></span><span class="popular-count">{{ b.borrow_count }} loans</span></li>
-  {% else %}<li class="muted">No borrowing history yet.</li>{% endfor %}
-</ol>
+<section class="chart-grid analytics-grid" aria-label="Library analytics charts">
+  <div class="chart-panel chart-wide">
+    <h2>Monthly issues and returns</h2>
+    <div class="chart-wrap"><canvas id="monthly-chart" aria-label="Monthly issues and returns"></canvas></div>
+  </div>
+  <div class="chart-panel">
+    <h2>Most borrowed books</h2>
+    <div class="chart-wrap"><canvas id="borrowed-chart" aria-label="Most borrowed books"></canvas></div>
+  </div>
+  <div class="chart-panel">
+    <h2>Most active students</h2>
+    <div class="chart-wrap"><canvas id="students-chart" aria-label="Most active students"></canvas></div>
+  </div>
+  <div class="chart-panel">
+    <h2>Category-wise borrowing</h2>
+    <div class="chart-wrap"><canvas id="category-chart" aria-label="Borrowing by category"></canvas></div>
+  </div>
+  <div class="chart-panel">
+    <h2>Inventory availability</h2>
+    <div class="chart-wrap"><canvas id="copy-chart" aria-label="Available and issued copies"></canvas></div>
+  </div>
+</section>
 
-<h2 class="sec">Stock by rack</h2>
-<div class="panel">
+<p class="chart-fallback muted" id="chart-fallback" hidden>
+  Charts could not be loaded. The report downloads below still use the current database records.
+</p>
+
+<h2 class="sec">Stock by category and rack</h2>
+<div class="panel inventory-bars">
   {% for c in cats %}
   <div class="barrow">
     <span class="bl">Rack {{ c.rack }} · {{ c.name }}</span>
     <div class="meter"><div class="fill ok" style="width: {{ (c.available / c.copies * 100) if c.copies else 0 }}%"></div></div>
     <span class="bn">{{ c.available }} / {{ c.copies }}</span>
   </div>
-  {% endfor %}
+  {% else %}<p class="muted">No inventory has been added.</p>{% endfor %}
 </div>
 
 <h2 class="sec">Overdue books</h2>
-<table class="js-table">
-  <thead><tr><th>Member</th><th>Book</th><th>Copy</th><th>Due</th><th>Days late</th><th>Fine</th></tr></thead><tbody>
-  {% for o in overdue %}
-  <tr class="overdue-row"><td>{{ o.name }} <small class="muted">{{ o.member_id }}</small></td><td>{{ o.title }}</td>
-      <td><code>{{ o.copy_id }}</code></td><td>{{ o.due_date }}</td><td><span class="late-badge">{{ o.late_days }} days</span></td><td>Rs.{{ o.fine }}</td></tr>
-  {% else %}<tr><td colspan="6" class="muted">Nothing overdue.</td></tr>{% endfor %}
-</tbody></table>
+<div class="report-table-wrap">
+  <table class="js-table">
+    <thead><tr><th>Member</th><th>Book</th><th>Copy</th><th>Due</th><th>Days late</th><th>Estimated fine</th></tr></thead>
+    <tbody>
+      {% for o in overdue %}
+      <tr class="overdue-row"><td>{{ o.name }} <small class="muted">{{ o.member_id }}</small></td><td>{{ o.title }}</td>
+          <td><code>{{ o.copy_id }}</code></td><td>{{ o.due_date }}</td><td><span class="late-badge">{{ o.late_days }} days</span></td><td>Rs.{{ o.fine }}</td></tr>
+      {% else %}<tr><td colspan="6" class="muted">Nothing overdue.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <h2 class="sec">Recent activity</h2>
-<table class="js-table">
-  <thead><tr><th>Book</th><th>Member</th><th>Issued</th><th>Status</th></tr></thead><tbody>
-  {% for t in recent %}
-  <tr><td>{{ t.title }}</td><td>{{ t.member_name }}</td><td>{{ t.issue_date }}</td>
-      <td>{% if t.return_date %}<span class="badge ok">Returned</span>{% else %}<span class="badge low">Issued</span>{% endif %}</td></tr>
-  {% endfor %}
-</tbody></table>
+<div class="report-table-wrap">
+  <table class="js-table">
+    <thead><tr><th>Book</th><th>Member</th><th>Issued</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for t in recent %}
+      <tr><td>{{ t.title }}</td><td>{{ t.member_name }}</td><td>{{ t.issue_date }}</td>
+          <td>{% if t.return_date %}<span class="badge ok">Returned</span>{% else %}<span class="badge low">Issued</span>{% endif %}</td></tr>
+      {% else %}<tr><td colspan="4" class="muted">No circulation activity yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-  const rackLabels = {{ cats | map(attribute='name') | list | tojson }};
-  const rackIssued = {{ cats | map(attribute='copies') | list | tojson }}.map((copies, i) => copies - {{ cats | map(attribute='available') | list | tojson }}[i]);
-  new Chart(document.getElementById('copy-chart'), {
-    type: 'doughnut',
-    data: { labels: ['Available', 'Issued'], datasets: [{ data: [{{ stats.available }}, {{ stats.issued }}], backgroundColor: ['#32875a', '#d19a3b'], borderWidth: 0 }] },
-    options: { maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom' } } }
-  });
-  new Chart(document.getElementById('rack-chart'), {
-    type: 'bar',
-    data: { labels: rackLabels, datasets: [{ label: 'Issued copies', data: rackIssued, backgroundColor: '#a85d3c', borderRadius: 3 }] },
-    options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { maxRotation: 45, minRotation: 0 } } } }
-  });
+  const analytics = {{ analytics | tojson }};
+  const palette = ['#315e53', '#a85d3c', '#d19a3b', '#557da7', '#8064a2', '#4b8c76'];
+  const fallback = document.getElementById('chart-fallback');
+  if (typeof Chart === 'undefined') {
+    fallback.hidden = false;
+  } else {
+    const chartConfigs = [];
+    const makeChart = (id, type, labels, datasets, options = {}) => {
+      const config = { type, data: { labels, datasets }, options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        ...options,
+      } };
+      chartConfigs.push({ id, config });
+      return new Chart(document.getElementById(id), config);
+    };
+    makeChart('monthly-chart', 'line', analytics.months, [
+      { label: 'Issues', data: analytics.monthly_issues, borderColor: '#a85d3c',
+        backgroundColor: 'rgba(168,93,60,.12)', fill: true, tension: .25 },
+      { label: 'Returns', data: analytics.monthly_returns, borderColor: '#315e53',
+        backgroundColor: 'rgba(49,94,83,.10)', fill: true, tension: .25 },
+    ], { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } });
+    makeChart('borrowed-chart', 'bar',
+      analytics.most_borrowed.map(item => item.title), [{
+        label: 'Loans',
+        data: analytics.most_borrowed.map(item => item.borrow_count),
+        backgroundColor: '#a85d3c',
+      }], { indexAxis: 'y', plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } });
+    makeChart('students-chart', 'bar',
+      analytics.active_students.map(item => item.name), [{
+        label: 'Loans',
+        data: analytics.active_students.map(item => item.borrow_count),
+        backgroundColor: '#557da7',
+      }], { indexAxis: 'y', plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } });
+    makeChart('category-chart', 'bar',
+      analytics.category_borrowing.map(item => item.name), [{
+        label: 'Loans',
+        data: analytics.category_borrowing.map(item => item.borrow_count),
+        backgroundColor: analytics.category_borrowing.map((_, i) => palette[i % palette.length]),
+      }], { plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } });
+    makeChart('copy-chart', 'doughnut', ['Available', 'Issued'], [{
+      data: [analytics.inventory.available, analytics.inventory.issued],
+      backgroundColor: ['#32875a', '#d19a3b'],
+      borderWidth: 0,
+    }], { cutout: '68%' });
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        chartConfigs.forEach(({ id, config }) => {
+          const canvas = document.getElementById(id);
+          const chart = Chart.getChart(canvas);
+          if (chart) chart.destroy();
+          new Chart(canvas, config);
+        });
+      }, 150);
+    });
+  }
 </script>
 {% endblock %}

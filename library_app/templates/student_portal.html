@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Student portal{% endblock %}
+{% block content %}
+<section class="portal-heading">
+  <div>
+    <p class="eyebrow">Student portal</p>
+    <h1>Welcome, {{ portal.profile.name }}</h1>
+    <p class="muted">{{ portal.profile.member_id }}{% if portal.profile.phone %} &middot; {{ portal.profile.phone }}{% endif %}</p>
+  </div>
+  <a class="portal-card-link" href="{{ url_for('member_card', member_id=member_id) }}">View digital library card</a>
+</section>
+
+<section class="portal-overview" aria-label="Your library account">
+  <div class="portal-stat"><span>Currently borrowed</span><strong>{{ portal.active_loans|length }} / {{ portal.profile.borrowing_limit }}</strong></div>
+  <div class="portal-stat"><span>Pending fines</span><strong>Rs.{{ portal.fine_total }}</strong></div>
+  <div class="portal-stat"><span>Active reservations</span><strong>{{ portal.reservations|selectattr('status', 'in', ['PENDING', 'READY'])|list|length }}</strong></div>
+  <div class="portal-stat"><span>Unread notifications</span><strong>{{ portal.notifications|rejectattr('read')|list|length }}</strong></div>
+</section>
+
+<section class="portal-section">
+  <h2>Currently borrowed</h2>
+  <div class="scan-table-wrap">
+    <table>
+      <thead><tr><th>Book</th><th>Copy</th><th>Location</th><th>Issued</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for loan in portal.active_loans %}
+        <tr class="{{ 'overdue-row' if loan.overdue_days else '' }}">
+          <td><a href="{{ url_for('book', book_id=loan.book_id) if loan.book_id else '#' }}">{{ loan.title }}</a><small class="portal-subline">{{ loan.author }}</small></td>
+          <td><code>{{ loan.copy_id }}</code></td>
+          <td>Rack {{ loan.rack }} &middot; Shelf {{ loan.shelf }}</td>
+          <td>{{ loan.issue_date }}</td><td>{{ loan.due_date }}</td>
+          <td>{% if loan.overdue_days %}<span class="late-badge">{{ loan.overdue_days }} day(s) overdue</span>{% else %}<span class="badge low">On loan</span>{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="portal-empty">You do not have any books checked out.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="portal-columns">
+  <section class="portal-section">
+    <h2>Pending fines</h2>
+    {% for fine in portal.fines %}
+      <article class="portal-list-card">
+        <div><strong>{{ fine.title }}</strong><small>{{ fine.copy_id }} &middot; assessed {{ fine.assessed_at[:10] }}</small></div>
+        <strong>Rs.{{ fine.balance }}</strong>
+      </article>
+    {% else %}
+      <p class="portal-empty">No assessed fines are currently outstanding.</p>
+    {% endfor %}
+    {% for loan in portal.active_loans if loan.overdue_days %}
+      <article class="portal-list-card projected-fine">
+        <div><strong>{{ loan.title }}</strong><small>Current overdue estimate &middot; {{ loan.overdue_days }} day(s)</small></div>
+        <strong>Rs.{{ loan.overdue_days * fine_per_day }}</strong>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="portal-section">
+    <h2>Reservations</h2>
+    {% for reservation in portal.reservations %}
+      <article class="portal-list-card">
+        <div>
+          <strong>{{ reservation.title }}</strong>
+          <small>{{ reservation.status.title() }}{% if reservation.queue_position %} &middot; queue position {{ reservation.queue_position }}{% endif %}</small>
+        </div>
+        {% if reservation.status in ('PENDING', 'READY') %}
+        <form method="post" action="{{ url_for('cancel_student_reservation', reservation_id=reservation.id) }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="small">Cancel</button>
+        </form>
+        {% endif %}
+      </article>
+    {% else %}
+      <p class="portal-empty">You have no reservations. Browse the <a href="{{ url_for('index') }}">catalog</a> to reserve a title.</p>
+    {% endfor %}
+  </section>
+</div>
+
+<section class="portal-section">
+  <h2>Notifications</h2>
+  {% for notification in portal.notifications %}
+    <article class="portal-notification {{ 'unread' if not notification.read else '' }}">
+      <div>
+        <span class="portal-notification-kind">{{ notification.kind.replace('_', ' ').title() }}</span>
+        <p>{{ notification.message }}</p>
+        <small>{{ notification.created_at[:16].replace('T', ' ') }}</small>
+      </div>
+      {% if not notification.read %}
+      <form method="post" action="{{ url_for('mark_student_notification_read', notification_id=notification.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="small">Mark read</button>
+      </form>
+      {% endif %}
+    </article>
+  {% else %}
+    <p class="portal-empty">No notifications yet.</p>
+  {% endfor %}
+</section>
+
+<section class="portal-section">
+  <h2>Borrowing history</h2>
+  <div class="scan-table-wrap">
+    <table>
+      <thead><tr><th>Book</th><th>Copy</th><th>Issued</th><th>Due</th><th>Returned</th><th>Fine</th></tr></thead>
+      <tbody>
+      {% for row in portal.history %}
+        <tr>
+          <td>{{ row.title }}</td><td><code>{{ row.copy_id }}</code></td>
+          <td>{{ row.issue_date }}</td><td>{{ row.due_date }}</td>
+          <td>{{ row.return_date or '&mdash;'|safe }}</td><td>{% if row.fine %}Rs.{{ row.fine }}{% else %}&mdash;{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="portal-empty">Borrowing history will appear here.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

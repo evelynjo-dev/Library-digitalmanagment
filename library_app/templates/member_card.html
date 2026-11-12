@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Library card · {{ member.name }}{% endblock %}
+{% block content %}
+<section class="library-card">
+  <div class="library-card-header">
+    <div>
+      <p class="eyebrow">Smart Library · Student ID</p>
+      <h1>{{ member.name }}</h1>
+      <p class="library-card-id">{{ member.member_id }}</p>
+    </div>
+    <img src="{{ url_for('member_qr', member_id=member.member_id) }}"
+         alt="QR code for {{ member.name }}'s library card" width="176" height="176">
+  </div>
+  <div class="library-card-details">
+    <span>Books currently borrowed</span>
+    <strong>{{ member.books_held }} / {{ member.borrowing_limit }}</strong>
+  </div>
+  <p class="muted">Present this QR code at the scan desk to borrow books.</p>
+  <button type="button" class="no-print" onclick="window.print()">Print library card</button>
+</section>
+{% endblock %}

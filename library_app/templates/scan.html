@@ -1,30 +1,127 @@
 {% extends "base.html" %}
-{% block title %}Scan desk{% endblock %}
+{% block title %}Smart scan desk{% endblock %}
 {% block content %}
-<h1>Scan desk</h1>
-<p class="muted">Scan a member ID, then a copy ID to issue. Scan a copy ID to return it.</p>
-<div class="two scan-panels">
-  <form class="panel scan-panel" method="post" action="{{ url_for('issue') }}">
-    <h3>Issue a book</h3>
-    <label>Member ID<input class="scan-focus" name="member_id" placeholder="Scan member barcode" autofocus required></label>
-    <label>Book copy ID<input name="copy_id" placeholder="Scan copy barcode" required></label>
-    <button>Issue book</button>
-  </form>
-  <form class="panel scan-panel" method="post" action="{{ url_for('return_book') }}">
-    <h3>Return a book</h3>
-    <label>Book copy ID<input class="scan-focus" name="copy_id" placeholder="Scan copy barcode" required></label>
-    <button class="alt">Return book</button>
-  </form>
-</div>
+<section class="scan-desk" id="scan-desk"
+         data-lookup-url="{{ url_for('api_scan_lookup') }}"
+         data-issue-url="{{ url_for('api_scan_issue') }}"
+         data-return-url="{{ url_for('api_scan_return') }}">
+  <div class="scan-heading">
+    <div>
+      <p class="eyebrow">Circulation</p>
+      <h1>Smart scan desk</h1>
+      <p class="muted">Use a library card and copy QR code, or enter IDs manually.</p>
+    </div>
+    <div class="scan-mode-switch" role="group" aria-label="Circulation mode">
+      <button type="button" class="scan-mode active" data-mode="issue" aria-pressed="true">Issue</button>
+      <button type="button" class="scan-mode" data-mode="return" aria-pressed="false">Return</button>
+    </div>
+  </div>
 
-<h2 class="sec">Recent activity</h2>
-<table class="js-table">
-  <thead><tr><th>Book</th><th>Copy</th><th>Member</th><th>Issued</th><th>Due</th><th>Status</th></tr></thead><tbody>
-  {% for t in recent %}
-  <tr><td>{{ t.title }}</td><td><code>{{ t.copy_id }}</code></td><td>{{ t.member_name }}</td>
-      <td>{{ t.issue_date }}</td><td>{{ t.due_date }}</td>
-      <td>{% if t.return_date %}<span class="badge ok">Returned</span>{% else %}<span class="badge low">Issued</span>{% endif %}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <p class="scan-instructions" id="scan-instructions">
+    Scan a student's digital library card first, then scan the book copy.
+  </p>
+
+  <div class="scan-workspace">
+    <section class="scan-camera-panel" aria-labelledby="camera-heading">
+      <div class="scan-panel-heading">
+        <div>
+          <h2 id="camera-heading">Camera scanner</h2>
+          <p class="muted">Allow camera access when prompted. Manual entry is always available.</p>
+        </div>
+        <span class="camera-indicator" aria-hidden="true"></span>
+      </div>
+      <div id="qr-reader" aria-label="QR code camera preview"></div>
+      <div class="camera-actions">
+        <button type="button" id="camera-start">Start camera</button>
+        <button type="button" class="alt" id="camera-stop" disabled>Stop camera</button>
+      </div>
+      <p id="camera-status" class="camera-status" role="status" aria-live="polite">
+        Camera is off. Start it to scan a QR code.
+      </p>
+    </section>
+
+    <section class="scan-details-panel" aria-labelledby="details-heading">
+      <h2 id="details-heading">Scan details</h2>
+      <p class="scan-message" id="scan-message" role="status" aria-live="polite">
+        Ready to identify a student.
+      </p>
+
+      <article class="scan-info-card" id="student-card" hidden>
+        <div class="scan-info-icon" aria-hidden="true">S</div>
+        <div class="scan-info-content">
+          <p class="scan-info-label">Student</p>
+          <h3 id="student-name"></h3>
+          <p><span id="student-member-id"></span><span class="scan-dot">·</span><span id="student-books-held"></span></p>
+          <p id="student-eligibility" class="scan-eligibility"></p>
+          <button type="button" class="scan-clear-student" id="change-student" hidden>Choose a different student</button>
+        </div>
+      </article>
+
+      <article class="scan-info-card" id="copy-card" hidden>
+        <div class="scan-info-icon book" aria-hidden="true">B</div>
+        <div class="scan-info-content">
+          <p class="scan-info-label">Book copy</p>
+          <h3 id="copy-title"></h3>
+          <p id="copy-author"></p>
+          <p><code id="copy-id"></code><span class="scan-dot">·</span><span id="copy-location"></span></p>
+        </div>
+      </article>
+
+      <section class="scan-confirmation" id="scan-confirmation" hidden aria-live="polite">
+        <p class="scan-info-label">Transaction confirmation</p>
+        <h3 id="confirmation-title"></h3>
+        <p id="confirmation-message"></p>
+        <p id="confirmation-due"></p>
+        <p id="confirmation-fine" hidden></p>
+      </section>
+
+      <form class="manual-scan-form" id="manual-issue-form">
+        <h3>Manual issue</h3>
+        <label>Student ID or card QR value
+          <input id="manual-member-id" name="member_id" autocomplete="off" placeholder="e.g. STU-104" required>
+        </label>
+        <label>Book copy ID or QR value
+          <input id="manual-issue-copy-id" name="copy_id" autocomplete="off" placeholder="e.g. BK001-C1" required>
+        </label>
+        <button type="submit">Issue book</button>
+      </form>
+
+      <form class="manual-scan-form" id="manual-return-form" hidden>
+        <h3>Manual return</h3>
+        <label>Book copy ID or QR value
+          <input id="manual-return-copy-id" name="copy_id" autocomplete="off" placeholder="e.g. BK001-C1" required>
+        </label>
+        <button type="submit" class="alt">Return book</button>
+      </form>
+    </section>
+  </div>
+</section>
+
+<section class="scan-history">
+  <div class="scan-history-heading">
+    <div>
+      <p class="eyebrow">Live from SQLite</p>
+      <h2>Recent transactions</h2>
+    </div>
+    <span class="muted">Latest 10 circulation records</span>
+  </div>
+  <div class="scan-table-wrap">
+    <table>
+      <thead><tr><th>Book</th><th>Copy</th><th>Member</th><th>Issued</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody id="scan-recent-body">
+      {% for t in recent %}
+        <tr>
+          <td>{{ t.title }}</td><td><code>{{ t.copy_id }}</code></td><td>{{ t.member_name }}</td>
+          <td>{{ t.issue_date }}</td><td>{{ t.due_date }}</td>
+          <td>{% if t.return_date %}<span class="badge ok">Returned</span>{% else %}<span class="badge low">Issued</span>{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr class="scan-empty-row"><td colspan="6">No transactions recorded yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='scan-desk.js') }}"></script>
 {% endblock %}

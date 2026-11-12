@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Catalog{% endblock %} · Smart Library</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -13,9 +14,22 @@
     <nav>
       <a href="{{ url_for('index') }}" class="{{ 'on' if request.endpoint in ('index','book') }}">Catalog</a>
       <a href="{{ url_for('floor_map') }}" class="{{ 'on' if request.endpoint == 'floor_map' }}">Floor map</a>
+      {% if g.current_user and g.current_user.role == 'ADMIN' %}
       <a href="{{ url_for('scan') }}" class="{{ 'on' if request.endpoint == 'scan' }}">Scan desk</a>
       <a href="{{ url_for('dashboard') }}" class="{{ 'on' if request.endpoint == 'dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('reports') }}" class="{{ 'on' if request.endpoint == 'reports' }}">Reports</a>
       <a href="{{ url_for('members') }}" class="{{ 'on' if request.endpoint == 'members' }}">Members</a>
+      {% elif g.current_user and g.current_user.role == 'STUDENT' %}
+      <a href="{{ url_for('student_portal') }}" class="{{ 'on' if request.endpoint == 'student_portal' }}">My portal</a>
+      {% endif %}
+      {% if g.current_user %}
+      <form class="nav-logout" method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Sign out</button>
+      </form>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="{{ 'on' if request.endpoint == 'login' }}">Sign in</a>
+      {% endif %}
     </nav>
   </div>
 </header>

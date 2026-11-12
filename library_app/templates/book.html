@@ -13,8 +13,10 @@
     <p class="count"><strong>{{ b.available }}</strong> of {{ b.total }} copies available</p>
 
     {% set free = copies | selectattr('status', 'equalto', 'AVAILABLE') | list %}
+    {% if is_admin %}
     <form class="panel" method="post" action="{{ url_for('issue') }}">
       <h3>Quick issue</h3>
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="next" value="{{ request.path }}">
       <div class="fields">
         <select name="member_id" required>
@@ -28,6 +30,14 @@
       </div>
     </form>
     <p><a class="link" href="{{ url_for('labels', book_id=b.book_id) }}">Print barcode labels for this book</a></p>
+    {% elif g.current_user and g.current_user.role == 'STUDENT' %}
+    <form method="post" action="{{ url_for('reserve_book', book_id=b.book_id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="alt">Reserve this title</button>
+    </form>
+    {% elif b.available == 0 %}
+    <p><a class="link" href="{{ url_for('login') }}">Sign in as a student to reserve this title.</a></p>
+    {% endif %}
   </div>
 </section>
 
@@ -40,8 +50,9 @@
     <td><span class="badge {{ 'ok' if c.status == 'AVAILABLE' else 'out' }}">{{ c.status.title() }}</span></td>
     <td>{{ c.holder or '—' }}</td>
     <td>{{ c.due_date or '—' }}</td>
-    <td>{% if c.status == 'ISSUED' %}
+    <td>{% if is_admin and c.status == 'ISSUED' %}
       <form method="post" action="{{ url_for('return_book') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="copy_id" value="{{ c.copy_id }}">
         <input type="hidden" name="next" value="{{ request.path }}">
         <button class="small">Return</button></form>{% endif %}</td>

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<section class="auth-panel panel">
+  <p class="eyebrow">Secure access</p>
+  <h1>Sign in to Smart Library</h1>
+  <p class="muted">Students and library administrators use their assigned member ID and password.</p>
+  <form method="post" action="{{ url_for('login') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label>Member or administrator ID
+      <input name="member_id" autocomplete="username" required autofocus>
+    </label>
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Sign in</button>
+  </form>
+</section>
+{% endblock %}

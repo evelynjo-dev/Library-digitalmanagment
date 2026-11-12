@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Reports and exports{% endblock %}
+{% block content %}
+<div class="dashboard-heading">
+  <div>
+    <p class="eyebrow">Administrator tools</p>
+    <h1>Reports &amp; exports</h1>
+    <p class="muted">Download current database records as CSV or print-ready PDF.</p>
+  </div>
+</div>
+
+<section class="report-grid" aria-label="Library reports">
+  <article class="report-card">
+    <h2>Overdue books</h2>
+    <p class="muted">Active loans past their due date, with days late and estimated fines.</p>
+    <div class="report-links">
+      <a href="{{ url_for('overdue_csv') }}">Download CSV</a>
+      <a href="{{ url_for('overdue_pdf') }}">Download PDF</a>
+    </div>
+  </article>
+  <article class="report-card">
+    <h2>Inventory</h2>
+    <p class="muted">Every physical copy, its QR payload, category, location, and current availability.</p>
+    <div class="report-links">
+      <a href="{{ url_for('inventory_csv') }}">Download CSV</a>
+      <a href="{{ url_for('inventory_pdf') }}">Download PDF</a>
+    </div>
+  </article>
+</section>
+
+<section class="member-reports">
+  <h2 class="sec">Member borrowing history</h2>
+  <p class="muted">Choose a student to export all recorded issues, returns, and fines.</p>
+  <div class="report-table-wrap">
+    <table>
+      <thead><tr><th>Member ID</th><th>Name</th><th>Currently held</th><th>Reports</th></tr></thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td><code>{{ member.member_id }}</code></td>
+          <td>{{ member.name }}</td>
+          <td>{{ member.holding }}</td>
+          <td class="report-links">
+            <a href="{{ url_for('member_borrowing_csv', member_id=member.member_id) }}">CSV</a>
+            <a href="{{ url_for('member_borrowing_pdf', member_id=member.member_id) }}">PDF</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="muted">No student accounts are available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

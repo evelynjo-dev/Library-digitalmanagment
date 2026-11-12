@@ -34,10 +34,10 @@
         <div class="spines">
           {% for b in s.books if b.shelf_row == row %}
           <a class="spine {{ b.available|avail_class }}" href="{{ url_for('book', book_id=b.book_id) }}"
-             style="--spine-height: {{ 112 + (b.book_id % 5) * 9 }}px; --spine-width: {{ 37 + (b.book_id % 4) * 5 }}px; --spine-cover: url('{{ url_for('cover', book_id=b.book_id) }}')"
+             style="--spine-color-start: {{ s.colors[0] }}; --spine-color-end: {{ s.colors[1] }}"
              title="{{ b.title }} by {{ b.author }} · {{ b.available }} of {{ b.total }} available">
             <span class="spine-dot" aria-label="{{ 'Available' if b.available > 1 else 'Low availability' if b.available == 1 else 'Unavailable' }}"></span>
-            <span class="spine-title">{{ b.title }}</span>
+            <span class="spine-title"><span>{{ b.title }}</span></span>
             <span class="spine-tip"><img src="{{ url_for('cover', book_id=b.book_id) }}" alt=""><span><strong>{{ b.title }}</strong><small>{{ b.author }}</small><small>{{ b.available }} of {{ b.total }} available</small></span></span>
           </a>
           {% endfor %}

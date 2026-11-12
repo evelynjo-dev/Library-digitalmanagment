@@ -2,36 +2,72 @@
 {% block title %}Floor map{% endblock %}
 {% block content %}
 <section class="map-heading">
-  <div><p class="eyebrow">GROUND FLOOR</p><h1>Library floor map</h1></div>
-  <p class="muted">Select a rack to browse its collection.</p>
+  <div><p class="eyebrow">COLLECTION LOCATOR</p><h1>Interactive floor map</h1></div>
+  <p class="muted">Open a rack to see its physical shelves, books, and copy status.</p>
 </section>
-<div class="floor-legend" aria-label="Availability legend">
-  <span><i class="legend-dot fresh"></i>Well stocked</span>
-  <span><i class="legend-dot steady"></i>Limited</span>
-  <span><i class="legend-dot busy"></i>Mostly issued</span>
+
+<form class="map-search" method="get" action="{{ url_for('floor_map') }}">
+  <label for="map-query">Find a title, author, category, or copy ID</label>
+  <div class="map-search-controls">
+    <input id="map-query" name="q" value="{{ q or '' }}" placeholder="Search the collection">
+    <button type="submit">Find location</button>
+    {% if q %}<a class="map-clear" href="{{ url_for('floor_map') }}">Clear</a>{% endif %}
+  </div>
+</form>
+{% if q %}<p class="map-result-count">{{ matching_books }} matching book(s) for "{{ q }}". Matching racks and shelf entries are highlighted.</p>{% endif %}
+
+<div class="floor-legend" aria-label="Copy availability legend">
+  <span><i class="legend-dot fresh"></i>Available</span>
+  <span><i class="legend-dot busy"></i>Issued</span>
 </div>
-<section class="floor-plan" aria-label="Top-down library plan">
-  <div class="map-aisle row-one">
-    {% for c in categories[:5] %}
-    {% set pct = (c.available / c.copies * 100) if c.copies else 0 %}
-    <a class="map-rack {{ 'stock-high' if pct < 20 else 'stock-mid' if pct < 55 else 'stock-light' }}" href="{{ url_for('index', category=c.name) }}">
-      <span class="map-rack-letter">{{ c.rack }}</span><strong>{{ c.name }}</strong><small>{{ c.available }} / {{ c.copies }} available</small>
-    </a>
+<section class="floor-plan" aria-label="Library rack and shelf locations">
+  <div class="map-aisle">
+    {% for rack in racks %}
+    <details class="map-rack-card {{ 'map-rack-match' if rack.matches else '' }}" id="rack-{{ rack.rack_code }}"
+             {% if q and rack.matches %}open{% endif %}>
+      <summary class="map-rack {{ 'stock-high' if rack.copies and rack.available / rack.copies < 0.2 else 'stock-mid' if rack.copies and rack.available / rack.copies < 0.55 else 'stock-light' }}">
+        <span class="map-rack-letter">{{ rack.rack_code }}</span>
+        <strong>{{ rack.name }}</strong>
+        <small>{{ rack.titles }} title(s) &middot; {{ rack.available }} / {{ rack.copies }} copies available</small>
+        {% if rack.location %}<small>{{ rack.location }}</small>{% endif %}
+      </summary>
+      <div class="map-rack-details">
+        {% for shelf in rack.shelves %}
+        <section class="map-shelf">
+          <div class="map-shelf-heading">
+            <strong>{{ shelf.name or ('Shelf ' ~ shelf.number) }}</strong>
+            <span>{{ shelf.titles }} title(s) &middot; {{ shelf.available }} / {{ shelf.copies }} available</span>
+          </div>
+          {% for book in shelf.books %}
+          <article class="map-book {{ 'map-book-match' if book.matches else '' }}">
+            <a href="{{ url_for('book', book_id=book.id) }}"><strong>{{ book.title }}</strong></a>
+            <span>{{ book.author }} &middot; {{ book.category }}</span>
+            <small>Rack {{ book.rack }} &middot; Shelf {{ book.shelf }} &middot; {{ book.available }} / {{ book.total }} available</small>
+            <div class="map-copy-status" aria-label="Copy availability">
+              {% for copy in book.copies %}
+              <span class="map-copy {{ 'available' if copy.status == 'AVAILABLE' else 'issued' }}"
+                    title="{{ copy.copy_id }}: {{ copy.status }}{% if copy.due_date %}, due {{ copy.due_date }}{% endif %}">
+                {{ copy.copy_id }} &middot; {{ 'Available' if copy.status == 'AVAILABLE' else 'Issued' }}
+              </span>
+              {% else %}
+              <span class="muted">No physical copies assigned.</span>
+              {% endfor %}
+            </div>
+          </article>
+          {% else %}
+          <p class="map-empty-shelf">No titles assigned to this shelf.</p>
+          {% endfor %}
+        </section>
+        {% else %}
+        <p class="map-empty-shelf">No shelves configured for this rack.</p>
+        {% endfor %}
+      </div>
+    </details>
+    {% else %}
+    <p class="empty">No rack locations have been configured yet.</p>
     {% endfor %}
   </div>
   <div class="map-corridor"><span>MAIN AISLE</span></div>
-  <div class="map-aisle row-two">
-    {% for c in categories[5:] %}
-    {% set pct = (c.available / c.copies * 100) if c.copies else 0 %}
-    <a class="map-rack {{ 'stock-high' if pct < 20 else 'stock-mid' if pct < 55 else 'stock-light' }}" href="{{ url_for('index', category=c.name) }}">
-      <span class="map-rack-letter">{{ c.rack }}</span><strong>{{ c.name }}</strong><small>{{ c.available }} / {{ c.copies }} available</small>
-    </a>
-    {% endfor %}
-  </div>
-  <div class="map-service">
-    <div class="map-desk"><span class="room-symbol">↗</span><strong>Reception / Issue desk</strong><small>Checkouts · Returns · Help</small></div>
-    <div class="map-reading"><span class="room-symbol">▤</span><strong>Reading area</strong><small>Quiet study · 24 seats</small><div class="reading-tables"><i></i><i></i><i></i><i></i></div></div>
-    <div class="map-entry"><span>ENTRANCE</span><b>↓</b></div>
-  </div>
+  <p class="map-data-note">Location and availability are calculated from the current catalog and circulation records.</p>
 </section>
 {% endblock %}

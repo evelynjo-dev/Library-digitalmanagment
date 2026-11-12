@@ -4,6 +4,7 @@
 <h1>Members</h1>
 <form class="panel" method="post">
   <h3>Add member</h3>
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   <div class="fields">
     <input name="member_id" placeholder="Member ID (roll no.)" required>
     <input name="name" placeholder="Full name" required>
@@ -12,10 +13,18 @@
   </div>
 </form>
 <table class="js-table">
-  <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Books held</th></tr></thead><tbody>
+  <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Books held</th><th>Library card</th><th>Account access</th></tr></thead><tbody>
   {% for m in members %}
   <tr><td><code>{{ m.member_id }}</code></td><td>{{ m.name }}</td><td>{{ m.phone or '—' }}</td>
-      <td>{{ m.holding }} / {{ max_books }}</td></tr>
+      <td>{{ m.holding }} / {{ max_books }}</td>
+      <td><a href="{{ url_for('member_card', member_id=m.member_id) }}">View QR card</a></td>
+      <td>
+        <form class="member-password-form" method="post" action="{{ url_for('member_password', member_id=m.member_id) }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="New password" required>
+          <button type="submit" class="small">Set password</button>
+        </form>
+      </td></tr>
   {% endfor %}
   </tbody>
 </table>
